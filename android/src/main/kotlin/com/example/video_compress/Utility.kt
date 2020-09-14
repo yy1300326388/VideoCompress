@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Build
+import android.util.Log
 import io.flutter.plugin.common.MethodChannel
 import org.json.JSONObject
 import java.io.File
@@ -32,47 +33,49 @@ class Utility(private val channelName: String) {
     }
 
     fun getMediaInfoJson(context: Context, path: String): JSONObject {
+        val json = JSONObject()
         val file = File(path)
         val retriever = MediaMetadataRetriever()
 
-        retriever.setDataSource(context, Uri.fromFile(file))
-
-        val durationStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
-        val title = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE) ?: ""
-        val author = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_AUTHOR) ?: ""
-        val widthStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)
-        val heightStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
-        val duration = java.lang.Long.parseLong(durationStr)
-        var width = java.lang.Long.parseLong(widthStr)
-        var height = java.lang.Long.parseLong(heightStr)
-        val filesize = file.length()
-        val orientation = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
-            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)
-        } else {
-            null
+        try {
+            retriever.setDataSource(path)
+            val durationStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+            val title = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE) ?: ""
+            val author = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_AUTHOR) ?: ""
+            val widthStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)
+            val heightStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
+            val duration = java.lang.Long.parseLong(durationStr)
+            var width = java.lang.Long.parseLong(widthStr)
+            var height = java.lang.Long.parseLong(heightStr)
+            val filesize = file.length()
+            val orientation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)
+            val ori = orientation?.toIntOrNull()
+            if (ori != null && isLandscapeImage(ori)) {
+                val tmp = width
+                width = height
+                height = tmp
+            }
+            json.put("path", path)
+            json.put("title", title)
+            json.put("author", author)
+            json.put("width", width)
+            json.put("height", height)
+            json.put("duration", duration)
+            json.put("filesize", filesize)
+            if (ori != null) {
+                json.put("orientation", ori)
+            }
+        } catch (ex: IllegalArgumentException) {
+            Log.e(channelName,"Assume this is a corrupt video file")
+        } catch (ex: RuntimeException) {
+            Log.e(channelName,"RuntimeException Assume this is a corrupt video file")
+        } finally {
+            try {
+                retriever.release()
+            } catch (ex: RuntimeException) {
+                Log.e(channelName,"RuntimeException Ignore failures while cleaning up")
+            }
         }
-        val ori = orientation?.toIntOrNull()
-        if (ori != null && isLandscapeImage(ori)) {
-            val tmp = width
-            width = height
-            height = tmp
-        }
-
-        retriever.release()
-
-        val json = JSONObject()
-
-        json.put("path", path)
-        json.put("title", title)
-        json.put("author", author)
-        json.put("width", width)
-        json.put("height", height)
-        json.put("duration", duration)
-        json.put("filesize", filesize)
-        if (ori != null) {
-            json.put("orientation", ori)
-        }
-
         return json
     }
 
