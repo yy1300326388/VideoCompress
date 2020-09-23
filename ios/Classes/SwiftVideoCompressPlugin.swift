@@ -172,6 +172,21 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
         
         let sourceVideoAsset = avController.getVideoAsset(sourceVideoUrl)
         let sourceVideoTrack = avController.getTrack(sourceVideoAsset)
+        if(sourceVideoTrack==nil){
+            let json = [
+            "path":"file_error",
+            "title":"",
+            "author":"",
+            "width":0,
+            "height":0,
+            "duration":0,
+            "filesize":0,
+            "orientation":0,
+            "isCancel" : false
+            ] as [String : Any?]
+            let jsonString = Utility.keyValueToJson(json)
+            return result(jsonString)
+        }
         
         let compressionUrl =
             Utility.getPathUrl("\(Utility.basePath())/\(Utility.getFileName(path)).\(sourceVideoType)")
