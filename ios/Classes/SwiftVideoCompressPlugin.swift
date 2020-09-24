@@ -167,6 +167,7 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
     private func compressVideo(_ path: String,_ quality: NSNumber,_ deleteOrigin: Bool,_ startTime: Double?,
                                _ duration: Double?,_ includeAudio: Bool?,_ frameRate: Int?,
                                _ result: @escaping FlutterResult) {
+        self.stopCommand=false;
         let sourceVideoUrl = Utility.getPathUrl(path)
         let sourceVideoType = "mp4"
         
