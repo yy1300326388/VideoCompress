@@ -3,7 +3,7 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'video_compress'
-  s.version          = '0.3.0'
+  s.version          = '1.2.0'
   s.swift_version    = '5.0'
   s.summary          = 'A new flutter plugin project.'
   s.description      = <<-DESC

@@ -14,6 +14,7 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.PluginRegistry.Registrar
+import org.json.JSONObject
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
@@ -60,6 +61,20 @@ class VideoCompressPlugin private constructor(private val activity: Activity, pr
                 val duration = call.argument<Int>("duration")
                 val includeAudio = call.argument<Boolean>("includeAudio")
                 val frameRate = if (call.argument<Int>("frameRate")==null) 30 else call.argument<Int>("frameRate")
+                // 检查文件是否存在
+                if (!File(path).exists()){
+                    val json = JSONObject()
+                    json.put("path", "file_error")
+                    json.put("title", "")
+                    json.put("author", "")
+                    json.put("width", 0)
+                    json.put("height", 0)
+                    json.put("duration", 0)
+                    json.put("filesize", 0)
+                    json.put("isCancel", false)
+                    result.success(json.toString())
+                    return
+                }
 
                 val tempDir: String = this.context.getExternalFilesDir("video_compress")!!.absolutePath
                 val out = SimpleDateFormat("yyyy-MM-dd hh-mm-ss").format(Date())
