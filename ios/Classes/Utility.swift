@@ -42,7 +42,7 @@ class Utility: NSObject {
     
     static func deleteFile(_ path: String, clear: Bool = false) {
         let url = getPathUrl(path)
-        if fileManager.fileExists(atPath: url.absoluteString) {
+        if fileManager.fileExists(atPath: path) {
             try? fileManager.removeItem(at: url)
         }
         if clear {

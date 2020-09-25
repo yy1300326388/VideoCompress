@@ -4,6 +4,7 @@ import AVFoundation
 public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
     private let channelName = "video_compress"
     private var exporter: AVAssetExportSession? = nil
+    private var timer: Timer? = nil
     private var stopCommand = false
     private let channel: FlutterMethodChannel
     private let avController = AvController()
@@ -132,10 +133,13 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
     
     
     @objc private func updateProgress(timer:Timer) {
-        let asset = timer.userInfo as! AVAssetExportSession
-        if(!stopCommand) {
-            channel.invokeMethod("updateProgress", arguments: "\(String(describing: asset.progress * 100))")
+        if (timer.isValid) {
+            let asset = timer.userInfo as! AVAssetExportSession
+            if(!stopCommand) {
+                channel.invokeMethod("updateProgress", arguments: "\(String(describing: asset.progress * 100))")
+            }
         }
+        
     }
     
     private func getExportPreset(_ quality: NSNumber)->String {
@@ -223,38 +227,44 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
             exporter.timeRange = timeRange
         }
         
-        Utility.deleteFile(compressionUrl.absoluteString)
+        Utility.deleteFile(compressionUrl.absoluteString,clear:true)
         
-        let timer = Timer.scheduledTimer(timeInterval: 0.1, target: self, selector: #selector(self.updateProgress),
+        self.timer = Timer.scheduledTimer(timeInterval: 0.5, target: self, selector: #selector(self.updateProgress),
                                          userInfo: exporter, repeats: true)
         
         exporter.exportAsynchronously(completionHandler: {
-            if(self.stopCommand) {
-                timer.invalidate()
-                self.stopCommand = false
-                var json = self.getMediaInfoJson(path)
-                json["isCancel"] = true
-                let jsonString = Utility.keyValueToJson(json)
-                return result(jsonString)
-            }
-            if deleteOrigin {
-                timer.invalidate()
-                let fileManager = FileManager.default
-                do {
-                    if fileManager.fileExists(atPath: path) {
-                        try fileManager.removeItem(atPath: path)
-                    }
-                    self.exporter = nil
+            // 停止进度更新
+            self.timer?.invalidate()
+            if(exporter.status==AVAssetExportSession.Status.completed){
+                if(self.stopCommand) {
                     self.stopCommand = false
+                    var json = self.getMediaInfoJson(path)
+                    json["isCancel"] = true
+                    let jsonString = Utility.keyValueToJson(json)
+                    return result(jsonString)
                 }
-                catch let error as NSError {
-                    print(error)
+                if deleteOrigin {
+                    let fileManager = FileManager.default
+                    do {
+                        if fileManager.fileExists(atPath: path) {
+                            try fileManager.removeItem(atPath: path)
+                        }
+                        self.exporter = nil
+                        self.stopCommand = false
+                    }
+                    catch let error as NSError {
+                        print(error)
+                    }
                 }
+                var json = self.getMediaInfoJson(compressionUrl.absoluteString)
+                json["isCancel"] = false
+                let jsonString = Utility.keyValueToJson(json)
+                    result(jsonString)
+            }else{
+                Utility.deleteFile(compressionUrl.absoluteString,clear:true)
+                result("")
             }
-            var json = self.getMediaInfoJson(compressionUrl.absoluteString)
-            json["isCancel"] = false
-            let jsonString = Utility.keyValueToJson(json)
-            result(jsonString)
+            
         })
     }
     
