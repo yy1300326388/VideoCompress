@@ -146,18 +146,28 @@ class VideoCompress {
       debugPrint('''VideoCompress: You can try to subscribe to the 
       compressProgress\$ stream to know the compressing state.''');
     }
-    final jsonStr = await _invoke<String>('compressVideo', {
-      'path': path,
-      'quality': quality.index,
-      'deleteOrigin': deleteOrigin,
-      'startTime': startTime,
-      'duration': duration,
-      'includeAudio': includeAudio,
-      'frameRate': frameRate,
-    });
-    _isCompressing = false;
-    final jsonMap = json.decode(jsonStr);
-    return MediaInfo.fromJson(jsonMap);
+    var jsonStr;
+    try {
+      jsonStr = await _invoke<String>('compressVideo', {
+        'path': path,
+        'quality': quality.index,
+        'deleteOrigin': deleteOrigin,
+        'startTime': startTime,
+        'duration': duration,
+        'includeAudio': includeAudio,
+        'frameRate': frameRate,
+      });
+    } catch (e) {
+      rethrow;
+    } finally {
+      _isCompressing = false;
+    }
+    if (jsonStr?.isNotEmpty ?? false) {
+      final jsonMap = json.decode(null);
+      return MediaInfo.fromJson(jsonMap);
+    } else {
+      return null;
+    }
   }
 
   /// stop compressing the file that is currently being compressed.

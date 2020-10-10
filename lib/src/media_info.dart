@@ -16,7 +16,6 @@ class MediaInfo {
   /// microsecond
   double duration;
   bool isCancel;
-  File file;
 
   MediaInfo({
     @required this.path,
@@ -28,7 +27,6 @@ class MediaInfo {
     this.filesize,
     this.duration,
     this.isCancel,
-    this.file,
   });
 
   MediaInfo.fromJson(Map<String, dynamic> json) {
@@ -41,7 +39,6 @@ class MediaInfo {
     filesize = json['filesize'];
     duration = double.tryParse('${json['duration']}');
     isCancel = json['isCancel'];
-    file = File(path);
   }
 
   Map<String, dynamic> toJson() {
@@ -59,7 +56,6 @@ class MediaInfo {
     if (this.isCancel != null) {
       data['isCancel'] = this.isCancel;
     }
-    data['file'] = File(path).toString();
     return data;
   }
 }
