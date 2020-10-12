@@ -260,8 +260,11 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
                 json["isCancel"] = false
                 let jsonString = Utility.keyValueToJson(json)
                     result(jsonString)
+            }else if(exporter.status==AVAssetExportSession.Status.exporting){
+                print("exporting")
             }else{
                 Utility.deleteFile(compressionUrl.absoluteString,clear:true)
+                print(exporter.error ?? "")
                 result("")
             }
             
