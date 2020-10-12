@@ -163,7 +163,7 @@ class VideoCompress {
       _isCompressing = false;
     }
     if (jsonStr?.isNotEmpty ?? false) {
-      final jsonMap = json.decode(null);
+      final jsonMap = json.decode(jsonStr);
       return MediaInfo.fromJson(jsonMap);
     } else {
       return null;
