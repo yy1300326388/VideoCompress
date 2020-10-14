@@ -4,6 +4,7 @@ import AVFoundation
 public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
     private let channelName = "video_compress"
     private var exporter: AVAssetExportSession? = nil
+    private var timer: Timer? = nil
     private var stopCommand = false
     private let channel: FlutterMethodChannel
     private let avController = AvController()
@@ -80,8 +81,9 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
     
     private func getFileThumbnail(_ path: String,_ quality: NSNumber,_ position: NSNumber,_ result: FlutterResult) {
         let fileName = Utility.getFileName(path)
-        let url = Utility.getPathUrl("\(Utility.basePath())/\(fileName).jpg")
-        Utility.deleteFile(path)
+        let thumbFilePath="\(Utility.basePath())/\(fileName).jpg";
+        let url = Utility.getPathUrl(thumbFilePath)
+        
         if let bitmap = getBitMap(path,quality,position,result) {
             guard (try? bitmap.write(to: url)) != nil else {
                 return result(FlutterError(code: channelName,message: "getFileThumbnail error",details: "getFileThumbnail error"))
@@ -132,10 +134,13 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
     
     
     @objc private func updateProgress(timer:Timer) {
-        let asset = timer.userInfo as! AVAssetExportSession
-        if(!stopCommand) {
-            channel.invokeMethod("updateProgress", arguments: "\(String(describing: asset.progress * 100))")
+        if (timer.isValid) {
+            let asset = timer.userInfo as! AVAssetExportSession
+            if(!stopCommand) {
+                channel.invokeMethod("updateProgress", arguments: "\(String(describing: asset.progress * 100))")
+            }
         }
+        
     }
     
     private func getExportPreset(_ quality: NSNumber)->String {
@@ -188,9 +193,8 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
             let jsonString = Utility.keyValueToJson(json)
             return result(jsonString)
         }
-        
-        let compressionUrl =
-            Utility.getPathUrl("\(Utility.basePath())/\(Utility.getFileName(path)).\(sourceVideoType)")
+        let compressionPath="\(Utility.basePath())/\(Utility.getFileName(path)).\(sourceVideoType)";
+        let compressionUrl = Utility.getPathUrl(compressionPath)
         
         let timescale = sourceVideoAsset.duration.timescale
         let minStartTime = Double(startTime ?? 0)
@@ -222,39 +226,48 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
         if !isIncludeAudio {
             exporter.timeRange = timeRange
         }
+        /// 先删除已压缩过的压缩文件
+        Utility.deleteFile(compressionPath)
         
-        Utility.deleteFile(compressionUrl.absoluteString)
-        
-        let timer = Timer.scheduledTimer(timeInterval: 0.1, target: self, selector: #selector(self.updateProgress),
+        self.timer = Timer.scheduledTimer(timeInterval: 0.5, target: self, selector: #selector(self.updateProgress),
                                          userInfo: exporter, repeats: true)
         
         exporter.exportAsynchronously(completionHandler: {
-            if(self.stopCommand) {
-                timer.invalidate()
-                self.stopCommand = false
-                var json = self.getMediaInfoJson(path)
-                json["isCancel"] = true
-                let jsonString = Utility.keyValueToJson(json)
-                return result(jsonString)
-            }
-            if deleteOrigin {
-                timer.invalidate()
-                let fileManager = FileManager.default
-                do {
-                    if fileManager.fileExists(atPath: path) {
-                        try fileManager.removeItem(atPath: path)
-                    }
-                    self.exporter = nil
+            // 停止进度更新
+            self.timer?.invalidate()
+            if(exporter.status==AVAssetExportSession.Status.completed){
+                if(self.stopCommand) {
                     self.stopCommand = false
+                    var json = self.getMediaInfoJson(path)
+                    json["isCancel"] = true
+                    let jsonString = Utility.keyValueToJson(json)
+                    return result(jsonString)
                 }
-                catch let error as NSError {
-                    print(error)
+                if deleteOrigin {
+                    let fileManager = FileManager.default
+                    do {
+                        if fileManager.fileExists(atPath: path) {
+                            try fileManager.removeItem(atPath: path)
+                        }
+                        self.exporter = nil
+                        self.stopCommand = false
+                    }
+                    catch let error as NSError {
+                        print(error)
+                    }
                 }
+                var json = self.getMediaInfoJson(compressionUrl.absoluteString)
+                json["isCancel"] = false
+                let jsonString = Utility.keyValueToJson(json)
+                    result(jsonString)
+            }else if(exporter.status==AVAssetExportSession.Status.exporting){
+                print("exporting")
+            }else{
+                Utility.deleteFile(compressionUrl.absoluteString,clear:true)
+                print(exporter.error ?? "")
+                result("")
             }
-            var json = self.getMediaInfoJson(compressionUrl.absoluteString)
-            json["isCancel"] = false
-            let jsonString = Utility.keyValueToJson(json)
-            result(jsonString)
+            
         })
     }
     
