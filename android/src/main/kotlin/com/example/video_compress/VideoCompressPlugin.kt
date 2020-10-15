@@ -57,20 +57,12 @@ class VideoCompressPlugin private constructor(private val activity: Activity, pr
                 val path = call.argument<String>("path")!!
                 val quality = call.argument<Int>("quality")!!
                 val deleteOrigin = call.argument<Boolean>("deleteOrigin")!!
-                val startTime = call.argument<Int>("startTime")
-                val duration = call.argument<Int>("duration")
                 val includeAudio = call.argument<Boolean>("includeAudio")
                 val frameRate = if (call.argument<Int>("frameRate")==null) 30 else call.argument<Int>("frameRate")
                 // 检查文件是否存在
                 if (!File(path).exists()){
                     val json = JSONObject()
                     json.put("path", "file_error")
-                    json.put("title", "")
-                    json.put("author", "")
-                    json.put("width", 0)
-                    json.put("height", 0)
-                    json.put("duration", 0)
-                    json.put("filesize", 0)
                     json.put("isCancel", false)
                     result.success(json.toString())
                     return
@@ -115,7 +107,8 @@ class VideoCompressPlugin private constructor(private val activity: Activity, pr
                             }
                             override fun onTranscodeCompleted(successCode: Int) {
                                 channel.invokeMethod("updateProgress", 100.00)
-                                val json = Utility(channelName).getMediaInfoJson(context, destPath)
+                                val json = JSONObject()
+                                json.put("path", destPath)
                                 json.put("isCancel", false)
                                 result.success(json.toString())
                                 if (deleteOrigin) {
