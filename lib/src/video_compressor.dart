@@ -158,6 +158,7 @@ class VideoCompress {
         'frameRate': frameRate,
       });
     } catch (e) {
+      _isCompressing = false;
       rethrow;
     } finally {
       _isCompressing = false;
